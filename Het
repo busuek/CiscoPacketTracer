@@ -1,0 +1,156 @@
+enable
+configure terminal
+hostname R2
+
+! Интерфейс в сторону общей сети с R1 (через коммутатор)
+interface FastEthernet0/0
+ ip address 192.168.0.130 255.255.255.192
+ no shutdown
+ exit
+
+! Интерфейс в сторону R3
+interface FastEthernet1/0
+ ip address 192.168.0.193 255.255.255.252
+ no shutdown
+ exit
+
+! Статические маршруты
+ip route 192.168.0.0 255.255.255.192 192.168.0.129
+ip route 192.168.0.64 255.255.255.252 192.168.0.129
+ip route 192.168.0.224 255.255.255.224 192.168.0.194
+
+! Сохранение конфигурации
+end
+copy running-config startup-config
+
+
+
+
+
+
+
+
+
+enable
+configure terminal
+hostname R2-RIP
+
+! Перенастройка интерфейсов на новую адресацию
+interface FastEthernet0/0
+ ip address 192.168.1.130 255.255.255.192
+ no shutdown
+ exit
+
+interface FastEthernet1/0
+ ip address 192.168.1.193 255.255.255.252
+ no shutdown
+ exit
+
+! Включение RIP v2
+router rip
+ version 2
+ no auto-summary
+ network 192.168.1.0
+ ! Рассылка только на интерфейсы, подключённые к другим маршрутизаторам
+ passive-interface FastEthernet0/0
+ exit
+
+! Сохранение конфигурации
+end
+copy running-config startup-config
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+enable
+configure terminal
+
+! Добавление интерфейса для пиринга (предполагается, что модуль расширения установлен)
+interface FastEthernet2/0
+ ip address 10.0.0.1 255.255.255.252
+ no shutdown
+ exit
+
+interface FastEthernet2/1
+ ip address 10.0.0.5 255.255.255.252
+ no shutdown
+ exit
+
+! Настройка BGP
+router bgp 100
+ bgp log-neighbor-changes
+ neighbor 10.0.0.2 remote-as 102
+ neighbor 10.0.0.6 remote-as 101
+ network 192.168.0.0 mask 255.255.255.0
+ exit
+
+! Статический маршрут для анонса агрегированной сети
+ip route 192.168.0.0 255.255.255.0 Null0
+
+! Маршрут по умолчанию для внутренних роутеров AS 100 (настраивается на R0 и R3)
+! На самом R2 он не обязателен, но для справки:
+! ip route 0.0.0.0 0.0.0.0 Null0  (если нужно)
+
+end
+copy running-config startup-config
+
+
+
+
+
+
+
+
+
+
+enable
+configure terminal
+
+! Добавление интерфейса для пиринга (предполагается установка модуля расширения)
+interface FastEthernet2/0
+ ip address 10.0.0.6 255.255.255.252
+ no shutdown
+ exit
+
+interface FastEthernet2/1
+ ip address 10.0.0.9 255.255.255.252
+ no shutdown
+ exit
+
+! Настройка BGP
+router bgp 101
+ bgp log-neighbor-changes
+ neighbor 10.0.0.5 remote-as 100
+ neighbor 10.0.0.10 remote-as 103
+ network 192.168.1.0 mask 255.255.255.0
+ exit
+
+! Статический маршрут для анонса агрегированной сети
+ip route 192.168.1.0 255.255.255.0 Null0
+
+! Распространение маршрута по умолчанию внутри AS 101 через RIP
+router rip
+ default-information originate
+ exit
+
+end
+copy running-config startup-config
+
+
+
+
+
+
+
+
